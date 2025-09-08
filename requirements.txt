@@ -18,4 +18,4 @@ lxml==4.9.3
 nltk==3.8.1
 sentencepiece==0.1.99
 protobuf==4.24.4
-tokenizers==0.15.0
+tokenizers==0.14.1
