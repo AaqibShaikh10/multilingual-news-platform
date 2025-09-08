@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Results - Multilingual News Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-primary mb-0">
+                <i class="fas fa-chart-line me-2"></i>Analysis Results
+            </h2>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                <i class="fas fa-plus me-2"></i>New Analysis
+            </a>
+        </div>
+
+        <!-- Metadata -->
+        {% if results.metadata %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-2">
+                        <h6 class="text-muted mb-1">Input Method</h6>
+                        <p class="mb-0">
+                            <i class="fas fa-{{ 'edit' if results.metadata.input_method == 'text' else 'link' if results.metadata.input_method == 'url' else 'file-upload' if results.metadata.input_method == 'file' else 'rss' }} me-1"></i>
+                            {{ results.metadata.input_method.title() }}
+                        </p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted mb-1">Source</h6>
+                        <p class="mb-0 small">
+                            {% if results.metadata.source_info.type == 'rss' %}
+                                {{ results.metadata.source_info.article_title[:50] }}...
+                            {% else %}
+                                {{ results.metadata.source_info.source[:50] }}...
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-2">
+                        <h6 class="text-muted mb-1">Text Length</h6>
+                        <p class="mb-0">{{ "{:,}".format(results.metadata.text_length) }} chars</p>
+                    </div>
+                    <div class="col-md-2">
+                        <h6 class="text-muted mb-1">Word Count</h6>
+                        <p class="mb-0">{{ "{:,}".format(results.metadata.word_count) }} words</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted mb-1">Processed</h6>
+                        <p class="mb-0">{{ results.metadata.timestamp }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Results Tabs -->
+        <div class="card shadow-lg">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="resultTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="language-tab" data-bs-toggle="tab" data-bs-target="#language" type="button" role="tab">
+                            <i class="fas fa-globe me-2"></i>Language
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab">
+                            <i class="fas fa-file-alt me-2"></i>Summary
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sentiment-tab" data-bs-toggle="tab" data-bs-target="#sentiment" type="button" role="tab">
+                            <i class="fas fa-heart me-2"></i>Sentiment
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="statistics-tab" data-bs-toggle="tab" data-bs-target="#statistics" type="button" role="tab">
+                            <i class="fas fa-chart-bar me-2"></i>Statistics
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="original-tab" data-bs-toggle="tab" data-bs-target="#original" type="button" role="tab">
+                            <i class="fas fa-file-text me-2"></i>Original
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="resultTabContent">
+                    <!-- Language Detection Tab -->
+                    <div class="tab-pane fade show active" id="language" role="tabpanel">
+                        <h4 class="mb-3">
+                            <i class="fas fa-language text-primary me-2"></i>Language Detection
+                        </h4>
+                        
+                        {% if results.language %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h3 class="text-primary mb-2">{{ results.language.name }}</h3>
+                                            <p class="text-muted mb-0">Detected Language</p>
+                                            <small class="text-muted">Code: {{ results.language.code.upper() }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h3 class="text-success mb-2">{{ "{:.1%}".format(results.language.confidence) }}</h3>
+                                            <p class="text-muted mb-0">Confidence Level</p>
+                                            <small class="text-muted">
+                                                {{ "High" if results.language.confidence > 0.8 else "Medium" if results.language.confidence > 0.5 else "Low" }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                {% if results.language.supported %}
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        <strong>Full Support:</strong> {{ results.language.name }} is fully supported for summarization and sentiment analysis.
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>Limited Support:</strong> {{ results.language.name }} has limited model support. Results may vary.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                Language detection failed. {{ results.language.error if results.language and results.language.error else "" }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Summary Tab -->
+                    <div class="tab-pane fade" id="summary" role="tabpanel">
+                        <h4 class="mb-3">
+                            <i class="fas fa-compress-alt text-success me-2"></i>Article Summary
+                        </h4>
+                        
+                        {% if results.summary and results.summary.text %}
+                            <div class="card border-success mb-3">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-magic me-2"></i>Generated Summary
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text fs-5 lh-lg">{{ results.summary.text }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h4 class="text-primary">{{ "{:,}".format(results.summary.original_words) }}</h4>
+                                            <p class="text-muted mb-0">Original Words</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h4 class="text-success">{{ "{:,}".format(results.summary.summary_words) }}</h4>
+                                            <p class="text-muted mb-0">Summary Words</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h4 class="text-info">{{ "{:.1f}%".format(results.summary.compression_ratio) }}</h4>
+                                            <p class="text-muted mb-0">Compression Ratio</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                Summarization failed. {{ results.summary.error if results.summary and results.summary.error else "Unable to generate summary." }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Sentiment Tab -->
+                    <div class="tab-pane fade" id="sentiment" role="tabpanel">
+                        <h4 class="mb-3">
+                            <i class="fas fa-heart text-danger me-2"></i>Sentiment Analysis
+                        </h4>
+                        
+                        {% if results.sentiment and results.sentiment.label != 'Unknown' %}
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="card border-{{ 'success' if results.sentiment.label == 'Positive' else 'danger' if results.sentiment.label == 'Negative' else 'info' }}">
+                                        <div class="card-body text-center">
+                                            <i class="fas fa-{{ 'smile' if results.sentiment.label == 'Positive' else 'frown' if results.sentiment.label == 'Negative' else 'meh' }} fa-3x text-{{ 'success' if results.sentiment.label == 'Positive' else 'danger' if results.sentiment.label == 'Negative' else 'info' }} mb-3"></i>
+                                            <h3 class="text-{{ 'success' if results.sentiment.label == 'Positive' else 'danger' if results.sentiment.label == 'Negative' else 'info' }}">
+                                                {{ results.sentiment.label }}
+                                            </h3>
+                                            <p class="text-muted mb-0">Overall Sentiment</p>
+                                            {% if results.sentiment.chunks_analyzed %}
+                                            <small class="text-muted">Analyzed in {{ results.sentiment.chunks_analyzed }} chunks</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h5 class="mb-3">Confidence Metrics</h5>
+                                            <div class="mb-2">
+                                                <div class="d-flex justify-content-between">
+                                                    <span>Score:</span>
+                                                    <strong>{{ "{:.3f}".format(results.sentiment.score) }}</strong>
+                                                </div>
+                                                <div class="progress mt-1">
+                                                    <div class="progress-bar bg-{{ 'success' if results.sentiment.label == 'Positive' else 'danger' if results.sentiment.label == 'Negative' else 'info' }}" 
+                                                         style="width: {{ (results.sentiment.score * 100)|round }}%"></div>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>Confidence:</span>
+                                                <span class="badge bg-{{ 'success' if results.sentiment.confidence == 'High' else 'warning' if results.sentiment.confidence == 'Medium' else 'secondary' }}">
+                                                    {{ results.sentiment.confidence }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                Sentiment analysis failed. {{ results.sentiment.error if results.sentiment and results.sentiment.error else "Unable to analyze sentiment." }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Statistics Tab -->
+                    <div class="tab-pane fade" id="statistics" role="tabpanel">
+                        <h4 class="mb-3">
+                            <i class="fas fa-chart-bar text-info me-2"></i>Text Statistics
+                        </h4>
+                        
+                        {% if results.statistics %}
+                            <div class="row mb-4">
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="card bg-primary text-white text-center">
+                                        <div class="card-body">
+                                            <h4>{{ "{:,}".format(results.statistics.total_characters) }}</h4>
+                                            <p class="mb-0">Characters</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="card bg-success text-white text-center">
+                                        <div class="card-body">
+                                            <h4>{{ "{:,}".format(results.statistics.total_words) }}</h4>
+                                            <p class="mb-0">Words</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="card bg-info text-white text-center">
+                                        <div class="card-body">
+                                            <h4>{{ results.statistics.total_sentences if results.statistics.total_sentences else "N/A" }}</h4>
+                                            <p class="mb-0">Sentences</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="card bg-warning text-dark text-center">
+                                        <div class="card-body">
+                                            <h4>{{ results.statistics.reading_time_minutes }}
+                                                <small>min</small>
+                                            </h4>
+                                            <p class="mb-0">Reading Time</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if results.statistics.most_frequent_words %}
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Most Frequent Words</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        {% for word, count in results.statistics.most_frequent_words %}
+                                        <div class="col-md-6 col-lg-4 mb-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong>{{ word }}</strong>
+                                                <span class="badge bg-secondary">{{ count }}</span>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Statistics calculation failed.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Original Text Tab -->
+                    <div class="tab-pane fade" id="original" role="tabpanel">
+                        <h4 class="mb-3">
+                            <i class="fas fa-file-text text-secondary me-2"></i>Original Text
+                        </h4>
+                        
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>Original Content</span>
+                                <div>
+                                    <small class="text-muted me-3">Total: {{ "{:,}".format(full_text_length) }} characters</small>
+                                    {% if full_text_length > 1000 %}
+                                    <button class="btn btn-sm btn-outline-primary" id="toggleTextBtn" onclick="toggleFullText()">
+                                        <i class="fas fa-expand-alt me-1"></i>Show Full Text
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <!-- Truncated Text (default view) -->
+                                <div id="truncatedText" class="text-preview" style="max-height: 400px; overflow-y: auto; line-height: 1.6; background-color: #f8f9fa; padding: 1rem; border-radius: 0.375rem;">
+                                    {% if full_text_length > 1000 %}
+                                        {{ original_text[:1000] }}...
+                                        <div class="mt-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Showing first 1,000 characters. Click "Show Full Text" to read complete content.
+                                            </small>
+                                        </div>
+                                    {% else %}
+                                        {{ original_text }}
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Full Text (hidden by default) -->
+                                {% if full_text_length > 1000 %}
+                                <div id="fullText" class="text-preview" style="display: none; max-height: 600px; overflow-y: auto; line-height: 1.6; background-color: #f8f9fa; padding: 1rem; border-radius: 0.375rem;">
+                                    {{ original_text }}
+                                    <div class="mt-3 pt-2 border-top">
+                                        <small class="text-muted">
+                                            <i class="fas fa-check-circle text-success me-1"></i>
+                                            Complete text ({{ "{:,}".format(full_text_length) }} characters)
+                                        </small>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Reading Controls -->
+                            {% if full_text_length > 1000 %}
+                            <div class="card-footer bg-light">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Estimated reading time: {{ ((full_text_length / 1000)|round) }} minutes
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-secondary" onclick="copyToClipboard()">
+                                                <i class="fas fa-copy me-1"></i>Copy Text
+                                            </button>
+                                            <button class="btn btn-outline-secondary" onclick="downloadText()">
+                                                <i class="fas fa-download me-1"></i>Download
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="text-center mt-4">
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg me-3">
+                <i class="fas fa-plus me-2"></i>Analyze Another Article
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle between truncated and full text
+function toggleFullText() {
+    const truncatedDiv = document.getElementById('truncatedText');
+    const fullDiv = document.getElementById('fullText');
+    const toggleBtn = document.getElementById('toggleTextBtn');
+    
+    if (fullDiv && fullDiv.style.display === 'none') {
+        // Show full text
+        truncatedDiv.style.display = 'none';
+        fullDiv.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-compress-alt me-1"></i>Show Less';
+        toggleBtn.classList.remove('btn-outline-primary');
+        toggleBtn.classList.add('btn-primary');
+    } else if (fullDiv) {
+        // Show truncated text
+        truncatedDiv.style.display = 'block';
+        fullDiv.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-expand-alt me-1"></i>Show Full Text';
+        toggleBtn.classList.remove('btn-primary');
+        toggleBtn.classList.add('btn-outline-primary');
+    }
+}
+
+// Copy text to clipboard
+function copyToClipboard() {
+    const fullDiv = document.getElementById('fullText');
+    const truncatedDiv = document.getElementById('truncatedText');
+    const textElement = (fullDiv && fullDiv.style.display !== 'none') ? fullDiv : truncatedDiv;
+    const text = textElement.textContent || textElement.innerText;
+    
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            showNotification('Text copied to clipboard!', 'success');
+        });
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showNotification('Text copied to clipboard!', 'success');
+        } catch (err) {
+            showNotification('Copy failed. Please select and copy manually.', 'error');
+        }
+        document.body.removeChild(textArea);
+    }
+}
+
+// Download text as file
+function downloadText() {
+    const fullDiv = document.getElementById('fullText');
+    const truncatedDiv = document.getElementById('truncatedText');
+    const textElement = (fullDiv && fullDiv.style.display !== 'none') ? fullDiv : truncatedDiv;
+    const text = textElement.textContent || textElement.innerText;
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'analyzed_article.txt';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    showNotification('Article downloaded!', 'success');
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-danger' : 'alert-info';
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show position-fixed" role="alert" style="top: 20px; right: 20px; z-index: 1050; min-width: 300px;">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        const alert = document.querySelector('.alert.position-fixed');
+        if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }
+    }, 3000);
+}
+</script>
+{% endblock %}
