@@ -15,38 +15,83 @@ from utils.summarizer import TextSummarizer
 from utils.sentiment_analyzer import SentimentAnalyzer
 from config import Config
 
+# Production logging configuration
+if os.environ.get('FLASK_ENV') == 'production':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s %(name)s %(message)s',
+        handlers=[logging.StreamHandler()]
+    )
+else:
+    logging.basicConfig(level=logging.DEBUG)
+
+logger = logging.getLogger(__name__)
+
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Log startup information
+logger.info(f"Starting Multilingual News Analysis Platform")
+logger.info(f"Environment: {os.environ.get('FLASK_ENV', 'development')}")
+logger.info(f"Port: {os.environ.get('PORT', '5000')}")
 
-# Initialize NLP components
-rss_processor = RSSProcessor()
-text_extractor = TextExtractor()
-language_detector = LanguageDetector()
-summarizer = TextSummarizer()
-sentiment_analyzer = SentimentAnalyzer()
+try:
+    # Initialize NLP components
+    logger.info("Initializing NLP components...")
+    rss_processor = RSSProcessor()
+    text_extractor = TextExtractor()
+    language_detector = LanguageDetector()
+    summarizer = TextSummarizer()
+    sentiment_analyzer = SentimentAnalyzer()
+    logger.info("All NLP components initialized successfully")
+    
+except Exception as e:
+    logger.error(f"Failed to initialize NLP components: {str(e)}")
+    # Don't crash - let the health check routes work
+    rss_processor = None
+    text_extractor = None
+    language_detector = None
+    summarizer = None
+    sentiment_analyzer = None
 
 # Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+upload_dir = app.config.get('UPLOAD_FOLDER', './uploads')
+os.makedirs(upload_dir, exist_ok=True)
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+           filename.rsplit('.', 1)[1].lower() in app.config.get('ALLOWED_EXTENSIONS', {'txt', 'pdf'})
+
+# Health check routes for Railway
+@app.route('/health')
+def health_check():
+    """Health check endpoint for deployment platforms"""
+    return jsonify({
+        "status": "healthy",
+        "message": "Multilingual News Analysis Platform is running",
+        "timestamp": datetime.now().isoformat(),
+        "environment": os.environ.get('FLASK_ENV', 'development')
+    })
 
 @app.route('/')
 def index():
     """Main page"""
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        logger.error(f"Error rendering index: {str(e)}")
+        return jsonify({"error": "Application is starting up, please try again in a moment"}), 503
 
 @app.route('/analyze', methods=['POST'])
 def analyze_text():
     """Main analysis endpoint"""
     try:
+        # Check if components are initialized
+        if not all([rss_processor, text_extractor, language_detector, summarizer, sentiment_analyzer]):
+            return jsonify({"error": "Application is still initializing AI models. Please try again in a moment."}), 503
+        
         # Get input method and text
         input_method = request.form.get('input_method', 'text')
         text = ""
@@ -72,6 +117,7 @@ def analyze_text():
                     else:
                         source_info = {'type': 'url', 'source': url}
                 except Exception as e:
+                    logger.error(f"URL extraction error: {str(e)}")
                     error_message = f"Error extracting text from URL: {str(e)}"
                     
         elif input_method == 'file':
@@ -88,11 +134,12 @@ def analyze_text():
                         # Save file temporarily
                         filename = secure_filename(file.filename)
                         unique_filename = f"{uuid.uuid4()}_{filename}"
-                        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                        file_path = os.path.join(upload_dir, unique_filename)
                         file.save(file_path)
                         
                         # Check file size
-                        if os.path.getsize(file_path) > app.config['MAX_CONTENT_LENGTH']:
+                        max_size = app.config.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)
+                        if os.path.getsize(file_path) > max_size:
                             os.remove(file_path)
                             error_message = "File size too large. Maximum 16MB allowed."
                         else:
@@ -112,6 +159,7 @@ def analyze_text():
                                 source_info = {'type': 'file', 'source': filename}
                                 
                     except Exception as e:
+                        logger.error(f"File processing error: {str(e)}")
                         error_message = f"Error processing file: {str(e)}"
 
         elif input_method == 'rss':
@@ -152,6 +200,7 @@ def analyze_text():
                                              show_rss_selection=True)
                         
                 except Exception as e:
+                    logger.error(f"RSS processing error: {str(e)}")
                     error_message = f"Error processing RSS feed: {str(e)}"
         
         # Check for errors
@@ -168,6 +217,7 @@ def analyze_text():
             flash("Text was truncated to 50,000 characters for processing.", "warning")
         
         # Perform analysis
+        logger.info(f"Starting analysis for {len(text)} characters of text")
         analysis_results = perform_analysis(text)
         
         # Add metadata
@@ -179,8 +229,9 @@ def analyze_text():
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         
+        logger.info(f"Analysis completed successfully")
         return render_template('results.html', 
-                             original_text=text,  # Pass full text
+                             original_text=text,
                              full_text_length=len(text),
                              results=analysis_results)
         
@@ -206,6 +257,7 @@ def perform_analysis(text):
                 'confidence': confidence,
                 'supported': language_detector.is_supported(detected_lang)
             }
+            logger.info(f"Language detected: {detected_lang} ({confidence:.2f})")
         except Exception as e:
             logger.error(f"Language detection error: {str(e)}")
             results['language'] = {
@@ -225,6 +277,7 @@ def perform_analysis(text):
                 'summary_words': len(summary.split()) if summary else 0,
                 'compression_ratio': (len(summary.split()) / len(text.split()) * 100) if summary and text.split() else 0
             }
+            logger.info(f"Summarization completed: {len(summary)} characters")
         except Exception as e:
             logger.error(f"Summarization error: {str(e)}")
             results['summary'] = {
@@ -240,6 +293,7 @@ def perform_analysis(text):
             sentiment_result = sentiment_analyzer.analyze_sentiment(text, results['language']['code'])
             if sentiment_result:
                 results['sentiment'] = sentiment_result
+                logger.info(f"Sentiment: {sentiment_result.get('label', 'Unknown')} ({sentiment_result.get('score', 0):.2f})")
             else:
                 results['sentiment'] = {
                     'label': 'Unknown',
@@ -308,6 +362,9 @@ def calculate_text_statistics(text):
 def get_rss_articles():
     """Get articles from RSS feed for selection"""
     try:
+        if not rss_processor:
+            return jsonify({'error': 'RSS processor not initialized'}), 503
+            
         rss_url = request.form.get('rss_url', '').strip()
         if not rss_url:
             return jsonify({'error': 'RSS URL is required'}), 400
@@ -316,12 +373,16 @@ def get_rss_articles():
         return jsonify({'articles': articles})
         
     except Exception as e:
+        logger.error(f"RSS articles error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/analyze', methods=['POST'])
 def api_analyze():
     """API endpoint for programmatic access"""
     try:
+        if not all([language_detector, summarizer, sentiment_analyzer]):
+            return jsonify({'error': 'AI models still loading. Please try again.'}), 503
+            
         data = request.get_json()
         if not data or 'text' not in data:
             return jsonify({'error': 'Text field is required'}), 400
@@ -334,17 +395,35 @@ def api_analyze():
         return jsonify(results)
         
     except Exception as e:
+        logger.error(f"API analysis error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+# Error handlers
 @app.errorhandler(413)
 def too_large(e):
+    logger.warning("File too large error")
     return render_template('index.html', 
                          error="File size too large. Maximum 16MB allowed."), 413
 
 @app.errorhandler(500)
 def internal_error(e):
+    logger.error(f"Internal server error: {str(e)}")
     return render_template('index.html', 
                          error="An internal server error occurred. Please try again."), 500
 
+@app.errorhandler(503)
+def service_unavailable(e):
+    logger.warning("Service unavailable")
+    return jsonify({
+        "error": "Service temporarily unavailable", 
+        "message": "AI models are still loading. Please try again in a moment."
+    }), 503
+
+# Production startup
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    host = '0.0.0.0'
+    
+    logger.info(f"Starting Flask app on {host}:{port} (debug={debug})")
+    app.run(host=host, port=port, debug=debug)
