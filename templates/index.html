@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Multilingual News Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Header Section -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 text-primary mb-3">
+                <i class="fas fa-newspaper me-3"></i>
+                Multilingual News Analysis
+            </h1>
+            <p class="lead text-muted">
+                Analyze news articles in 10+ languages with automatic language detection, 
+                summarization, and sentiment analysis powered by advanced AI models.
+            </p>
+        </div>
+
+        <!-- Analysis Form -->
+        <div class="card shadow-lg">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-cogs me-2"></i>Analyze Your Content
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('analyze_text') }}" enctype="multipart/form-data" id="analysisForm">
+                    <!-- Input Method Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Choose Input Method:</label>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="input_method" id="method_text" value="text" checked>
+                                    <label class="form-check-label" for="method_text">
+                                        <i class="fas fa-edit text-primary me-2"></i>
+                                        Direct Text Input
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="input_method" id="method_url" value="url">
+                                    <label class="form-check-label" for="method_url">
+                                        <i class="fas fa-link text-info me-2"></i>
+                                        URL Input
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="input_method" id="method_file" value="file">
+                                    <label class="form-check-label" for="method_file">
+                                        <i class="fas fa-file-upload text-success me-2"></i>
+                                        File Upload
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="input_method" id="method_rss" value="rss">
+                                    <label class="form-check-label" for="method_rss">
+                                        <i class="fas fa-rss text-warning me-2"></i>
+                                        RSS Feed
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Text Input Section -->
+                    <div id="text_input_section" class="input-section">
+                        <div class="mb-3">
+                            <label for="direct_text" class="form-label fw-bold">
+                                <i class="fas fa-paragraph me-2"></i>Enter your news article text:
+                            </label>
+                            <textarea name="direct_text" id="direct_text" class="form-control" rows="8" 
+                                    placeholder="Paste your news article content here... The more text you provide, the better the analysis results will be."></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Minimum 50 characters required. Supports all major languages.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- URL Input Section -->
+                    <div id="url_input_section" class="input-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="url" class="form-label fw-bold">
+                                <i class="fas fa-globe me-2"></i>Enter news article URL:
+                            </label>
+                            <input type="url" name="url" id="url" class="form-control" 
+                                   placeholder="https://example.com/news-article">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                We'll automatically extract and clean the article text from the webpage.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Upload Section -->
+                    <div id="file_input_section" class="input-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="file" class="form-label fw-bold">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>Upload your file:
+                            </label>
+                            <input type="file" name="file" id="file" class="form-control" accept=".txt,.pdf">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Supported formats: .txt, .pdf (Max size: 16MB)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RSS Feed Section -->
+                    <div id="rss_input_section" class="input-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="rss_url" class="form-label fw-bold">
+                                <i class="fas fa-rss me-2"></i>Enter RSS feed URL:
+                            </label>
+                            <input type="url" name="rss_url" id="rss_url" class="form-control" 
+                                   placeholder="https://example.com/rss" value="{{ rss_url if rss_url }}">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Enter RSS feed URL to browse and select articles for analysis.
+                            </div>
+                        </div>
+                        
+                        {% if show_rss_selection and rss_articles %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-list me-2"></i>Select Article to Analyze:
+                            </label>
+                            <div class="list-group" style="max-height: 400px; overflow-y: auto;">
+                                {% for article in rss_articles %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="article_index" id="article_{{ article.index }}" value="{{ article.index }}">
+                                        <label class="form-check-label w-100" for="article_{{ article.index }}">
+                                            <div class="d-flex w-100 justify-content-between">
+                                                <h6 class="mb-1">{{ article.title[:100] }}{% if article.title|length > 100 %}...{% endif %}</h6>
+                                                <small>{{ article.published }}</small>
+                                            </div>
+                                            <p class="mb-1">{{ (article.summary or article.content)[:200] }}{% if (article.summary or article.content)|length > 200 %}...{% endif %}</p>
+                                            {% if article.author %}
+                                            <small>By: {{ article.author }}</small>
+                                            {% endif %}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if not show_rss_selection %}
+                        <div class="mb-3">
+                            <h6 class="fw-bold">Popular RSS Feeds:</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-muted">News</h6>
+                                    <ul class="list-unstyled small">
+                                        <li><a href="javascript:void(0)" onclick="setRssUrl('http://feeds.bbci.co.uk/news/rss.xml')">BBC News</a></li>
+                                        <li><a href="javascript:void(0)" onclick="setRssUrl('http://rss.cnn.com/rss/edition.rss')">CNN</a></li>
+                                        <li><a href="javascript:void(0)" onclick="setRssUrl('https://www.reuters.com/rssFeed/worldNews')">Reuters</a></li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-muted">Technology</h6>
+                                    <ul class="list-unstyled small">
+                                        <li><a href="javascript:void(0)" onclick="setRssUrl('https://techcrunch.com/feed/')">TechCrunch</a></li>
+                                        <li><a href="javascript:void(0)" onclick="setRssUrl('https://www.theverge.com/rss/index.xml')">The Verge</a></li>
+                                        <li><a href="javascript:void(0)" onclick="setRssUrl('http://feeds.arstechnica.com/arstechnica/index')">Ars Technica</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="analyzeBtn">
+                            <span id="analyzeText">
+                                <i class="fas fa-magic me-2"></i>
+                                {% if show_rss_selection %}Select Article & Analyze{% else %}Analyze Article{% endif %}
+                            </span>
+                            <span id="analyzeSpinner" style="display: none;">
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                Analyzing...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <h3 class="text-center mb-4">
+                    <i class="fas fa-star text-warning me-2"></i>Platform Features
+                </h3>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 border-0 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-rss fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">RSS Feed Support</h5>
+                        <p class="card-text small">Browse and analyze articles directly from RSS feeds</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 border-0 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-language fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">Language Detection</h5>
+                        <p class="card-text small">Automatic detection of 20+ languages with confidence scoring</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 border-0 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-compress-alt fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">Smart Summarization</h5>
+                        <p class="card-text small">AI-powered abstractive summarization preserving key facts</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 border-0 text-center">
+                    <div class="card-body">
+                        <i class="fas fa-heart fa-3x text-danger mb-3"></i>
+                        <h5 class="card-title">Sentiment Analysis</h5>
+                        <p class="card-text small">Multilingual sentiment classification with confidence scores</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function setRssUrl(url) {
+    document.getElementById('rss_url').value = url;
+}
+</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('analysisForm');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const analyzeText = document.getElementById('analyzeText');
+    const analyzeSpinner = document.getElementById('analyzeSpinner');
+    
+    // Handle input method changes
+    const inputMethods = document.querySelectorAll('input[name="input_method"]');
+    const textSection = document.getElementById('text_input_section');
+    const urlSection = document.getElementById('url_input_section');
+    const fileSection = document.getElementById('file_input_section');
+    const rssSection = document.getElementById('rss_input_section');
+    
+    inputMethods.forEach(method => {
+        method.addEventListener('change', function() {
+            // Hide all sections
+            textSection.style.display = 'none';
+            urlSection.style.display = 'none'; 
+            fileSection.style.display = 'none';
+            rssSection.style.display = 'none';
+            
+            // Show selected section
+            switch(this.value) {
+                case 'text':
+                    textSection.style.display = 'block';
+                    break;
+                case 'url':
+                    urlSection.style.display = 'block';
+                    break;
+                case 'file':
+                    fileSection.style.display = 'block';
+                    break;
+                case 'rss':
+                    rssSection.style.display = 'block';
+                    break;
+            }
+        });
+    });
+    
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        // Show loading state
+        analyzeText.style.display = 'none';
+        analyzeSpinner.style.display = 'inline';
+        analyzeBtn.disabled = true;
+        
+        // Basic validation
+        const inputMethod = document.querySelector('input[name="input_method"]:checked').value;
+        let hasInput = false;
+        
+        if (inputMethod === 'text') {
+            hasInput = document.getElementById('direct_text').value.trim().length > 0;
+        } else if (inputMethod === 'url') {
+            hasInput = document.getElementById('url').value.trim().length > 0;
+        } else if (inputMethod === 'file') {
+            hasInput = document.getElementById('file').files.length > 0;
+        } else if (inputMethod === 'rss') {
+            const rssUrl = document.getElementById('rss_url').value.trim();
+            const selectedArticle = document.querySelector('input[name="article_index"]:checked');
+            hasInput = rssUrl.length > 0 && (selectedArticle || !document.querySelector('input[name="article_index"]'));
+        }
+        
+        if (!hasInput) {
+            e.preventDefault();
+            alert('Please provide input for analysis.');
+            // Reset button state
+            analyzeText.style.display = 'inline';
+            analyzeSpinner.style.display = 'none';
+            analyzeBtn.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

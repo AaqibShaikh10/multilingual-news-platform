@@ -1,0 +1,28 @@
+# Core Flask application
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# Text processing and extraction
+requests==2.31.0
+beautifulsoup4==4.12.2
+pypdf==3.16.4
+feedparser==6.0.10
+
+# Language detection
+langdetect==1.0.9
+
+# Machine Learning and NLP
+transformers==4.33.2
+torch==2.0.1
+tokenizers==0.13.3
+sentencepiece==0.1.99
+
+# Additional dependencies for ML models
+numpy==1.24.3
+huggingface-hub==0.16.4
+
+# Optional but recommended for better performance
+accelerate==0.21.0
+
+# For deployment (optional)
+gunicorn==21.2.0

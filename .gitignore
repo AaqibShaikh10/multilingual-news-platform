@@ -1,0 +1,43 @@
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Python cache / compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.pyo
+*.pyd
+
+# IDE / editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment / secret config files
+*.env
+.env.*
+config.local.py
+
+# Uploaded / generated files
+uploads/
+media/
+tmp/
+*.sqlite3
+
+# Byte-compiled, optimized, or DLL files
+*.so
+*.dll
+*.dylib
