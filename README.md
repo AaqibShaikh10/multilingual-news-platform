@@ -19,24 +19,25 @@ The application uses Flask app factory pattern with a Config class for configura
 
 ```
 multilingual-news-platform/
-├── app.py                          # Flask application factory and routes
-├── config.py                       # Configuration settings
+├── app.py                          # Main Flask application
+├── config.py                       # Application configuration
 ├── requirements.txt                # Python dependencies
-├── utils/
+├── utils/                          # Utility modules package
+│   ├── __init__.py
 │   ├── language_detector.py        # Language detection with langdetect
-│   ├── summarizer.py               # Text summarization with transformers
+│   ├── rss_processor.py            # RSS feed parsing
 │   ├── sentiment_analyzer.py      # Sentiment analysis with multilingual support
-│   ├── text_extractor.py           # URL and PDF text extraction
-│   └── rss_processor.py            # RSS feed parsing
-├── templates/
+│   ├── summarizer.py               # Text summarization with transformers
+│   └── text_extractor.py           # URL and PDF text extraction
+├── templates/                      # HTML templates folder
 │   ├── base.html                   # Base template with Bootstrap
 │   ├── index.html                  # Main page with input form
 │   └── results.html                # Analysis results display
-├── static/
-│   ├── js/
-│   │   └── main.js                 # Frontend validation and UI logic
-│   └── css/
-│       └── style.css               # Custom Bootstrap styles
+├── static/                         # Static assets folder
+│   ├── css/
+│   │   └── style.css               # Custom Bootstrap styles
+│   └── js/
+│       └── main.js                 # Frontend validation and UI logic
 └── uploads/                        # Temporary file uploads (gitignored)
 ```
 
